@@ -140,7 +140,7 @@ class _HomePageState extends State<HomePage> {
                       .delete()
                       .eq('document', document.id);
 
-                  await supabase.from('DocumentToDocumentType').upsert(
+                  await supabase.from('DocumentToDocumentType').insert(
                         documentTypesController.selectedOptions
                             .map((e) => {
                                   'document': document.id,
@@ -306,18 +306,19 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      "Documents",
+                      "Efrei GED",
                       style: TextStyle(
                         color: secondaryColor,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    ElevatedButton(
+                    ElevatedButton.icon(
                       onPressed: () {
                         showCreateDialog(context, allDocumentTypes);
                       },
-                      child: const Text("Ajouter"),
+                      label: const Text("Document"),
+                      icon: const Icon(Icons.add),
                     ),
                   ],
                 ),
@@ -425,12 +426,19 @@ class _HomePageState extends State<HomePage> {
                                       height: 20,
                                       child: documentTypes.isNotEmpty
                                           ? ListView(
+                                              scrollDirection: Axis.horizontal,
                                               children: documentTypes
                                                   .map(
-                                                    (dt) => Text(
-                                                      dt.name,
-                                                      style: TextStyle(
-                                                        color: secondaryColor,
+                                                    (dt) => Container(
+                                                      margin:
+                                                          const EdgeInsets.only(
+                                                        right: 8,
+                                                      ),
+                                                      child: Text(
+                                                        dt.name,
+                                                        style: TextStyle(
+                                                          color: secondaryColor,
+                                                        ),
                                                       ),
                                                     ),
                                                   )
@@ -464,9 +472,26 @@ class _HomePageState extends State<HomePage> {
                   );
                 },
               ),
-              ElevatedButton(
-                onPressed: logout,
-                child: const Text("Se déconnecter"),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  ElevatedButton(
+                    onPressed: logout,
+                    style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(Colors.red),
+                    ),
+                    child: Text(
+                      "Se déconnecter",
+                      style: TextStyle(color: secondaryColor),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed("/document-types");
+                    },
+                    child: const Text("Types de documents"),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
             ],

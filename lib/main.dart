@@ -1,4 +1,5 @@
 import 'package:efrei_ged/colors.dart';
+import 'package:efrei_ged/pages/documentTypes.dart';
 import 'package:efrei_ged/pages/home.dart';
 import 'package:efrei_ged/pages/login.dart';
 import 'package:efrei_ged/pages/signup.dart';
@@ -79,6 +80,7 @@ class App extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/home': (context) => const HomePage(),
         '/signup': (context) => const SignupPage(),
+        '/document-types': (context) => const DocumentTypesPage(),
       },
       debugShowCheckedModeBanner: false,
     );
