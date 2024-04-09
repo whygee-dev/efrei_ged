@@ -38,6 +38,8 @@ class _HomePageState extends State<HomePage> {
           var nameController = TextEditingController(text: document.name);
           MultiSelectController<DocumentType> documentTypesController =
               MultiSelectController();
+          var descriptionController =
+              TextEditingController(text: document.description);
 
           return AlertDialog(
             title: Text(
@@ -51,6 +53,13 @@ class _HomePageState extends State<HomePage> {
                   controller: nameController,
                   decoration: const InputDecoration(
                     labelText: "Nom",
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: "Description",
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -173,6 +182,7 @@ class _HomePageState extends State<HomePage> {
         builder: (context) {
           MultiSelectController<DocumentType> documentTypesController =
               MultiSelectController();
+          TextEditingController descriptionController = TextEditingController();
 
           return AlertDialog(
             title: Text(
@@ -191,6 +201,13 @@ class _HomePageState extends State<HomePage> {
                       TextEditingController(text: result.files.first.name),
                 ),
                 const SizedBox(height: 16),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: "Description",
+                  ),
+                ),
+                const SizedBox(height: 16),
                 MultiSelectDropDown<DocumentType>(
                   controller: documentTypesController,
                   onOptionSelected: (options) {},
@@ -206,6 +223,7 @@ class _HomePageState extends State<HomePage> {
                   fieldBackgroundColor: Colors.transparent,
                   searchBackgroundColor: Colors.transparent,
                   dropdownBackgroundColor: Colors.transparent,
+                  hint: "Sélectionner les types du document",
                 ),
               ],
             ),
@@ -238,6 +256,7 @@ class _HomePageState extends State<HomePage> {
                       .insert({
                         'name': fileName,
                         'path': path,
+                        'description': descriptionController.text,
                       })
                       .select()
                       .single());
@@ -265,188 +284,195 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       body: StreamBuilder(
-          stream: supabase.from("DocumentType").stream(
-            primaryKey: ["id"],
-          ),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
+        stream: supabase.from("DocumentType").stream(
+          primaryKey: ["id"],
+        ),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
 
-            final allDocumentTypes =
-                snapshot.data?.map((v) => DocumentType.fromJson(v)).toList() ??
-                    [];
+          final allDocumentTypes =
+              snapshot.data?.map((v) => DocumentType.fromJson(v)).toList() ??
+                  [];
 
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        "Documents",
-                        style: TextStyle(
-                          color: secondaryColor,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Documents",
+                      style: TextStyle(
+                        color: secondaryColor,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          showCreateDialog(context, allDocumentTypes);
-                        },
-                        child: const Text("Ajouter"),
-                      ),
-                    ],
-                  ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        showCreateDialog(context, allDocumentTypes);
+                      },
+                      child: const Text("Ajouter"),
+                    ),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SearchBar(
-                    hintText: "Rechercher",
-                    onChanged: (value) {
-                      setState(() {
-                        searchText = value;
-                      });
-                    },
-                  ),
-                ),
-                StreamBuilder(
-                  stream: supabase.from('Document').stream(primaryKey: ['id']),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    }
-
-                    final documents = (snapshot.data ?? [])
-                        .map((v) => Document.fromJson(v))
-                        .toList()
-                        .where((document) {
-                      return document.name
-                          .toLowerCase()
-                          .contains(searchText.toLowerCase());
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SearchBar(
+                  hintText: "Rechercher",
+                  onChanged: (value) {
+                    setState(() {
+                      searchText = value;
                     });
-
-                    return Expanded(
-                      child: ListView(
-                        children: documents
-                            .map(
-                              (document) => StreamBuilder(
-                                stream: supabase
-                                    .from("DocumentToDocumentType")
-                                    .stream(
-                                  primaryKey: ["document", "document_type"],
-                                ).eq('document', document.id),
-                                builder: (context, snapshot) {
-                                  final documentTypes = (snapshot.data ?? [])
-                                      .map((row) => row['document_type'])
-                                      .toList()
-                                      .map(
-                                        (v) => allDocumentTypes
-                                            .firstWhere((dt) => dt.id == v),
-                                      )
-                                      .toList();
-
-                                  return Slidable(
-                                    startActionPane: ActionPane(
-                                      motion: const StretchMotion(),
-                                      children: [
-                                        SlidableAction(
-                                          onPressed: (context) {
-                                            showEditDialog(
-                                              context,
-                                              document,
-                                              allDocumentTypes,
-                                              documentTypes,
-                                            );
-                                          },
-                                          label: 'Modifier',
-                                          backgroundColor: Colors.blue,
-                                          icon: Icons.edit,
-                                        ),
-                                      ],
-                                    ),
-                                    endActionPane: ActionPane(
-                                      motion: const StretchMotion(),
-                                      children: [
-                                        SlidableAction(
-                                          onPressed: (context) async {
-                                            await supabase
-                                                .from('DocumentToDocumentType')
-                                                .delete()
-                                                .eq('document', document.id);
-
-                                            await supabase
-                                                .from('Document')
-                                                .delete()
-                                                .eq('id', document.id);
-
-                                            await supabase.storage
-                                                .from('default')
-                                                .remove([document.path]);
-                                          },
-                                          label: 'Supprimer',
-                                          backgroundColor: Colors.red,
-                                          icon: Icons.delete,
-                                        ),
-                                      ],
-                                    ),
-                                    child: ListTile(
-                                      title: Text(
-                                        document.name,
-                                        style: TextStyle(color: secondaryColor),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      subtitle: SizedBox(
-                                        height: 20,
-                                        child: ListView(
-                                          children: documentTypes
-                                              .map(
-                                                (dt) => Text(
-                                                  dt.name,
-                                                  style: TextStyle(
-                                                    color: secondaryColor,
-                                                  ),
-                                                ),
-                                              )
-                                              .toList(),
-                                        ),
-                                      ),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.download),
-                                        onPressed: () async {
-                                          await FileSaver.instance.saveFile(
-                                            name: document.name,
-                                            bytes: await supabase.storage
-                                                .from('default')
-                                                .download(document.path),
-                                          );
-                                        },
-                                        color: secondaryColor,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            )
-                            .toList(),
-                      ),
-                    );
                   },
                 ),
-                ElevatedButton(
-                  onPressed: logout,
-                  child: const Text("Se déconnecter"),
-                ),
-                const SizedBox(height: 16),
-              ],
-            );
-          }),
+              ),
+              StreamBuilder(
+                stream: supabase.from('Document').stream(primaryKey: ['id']),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  }
+
+                  final documents = (snapshot.data ?? [])
+                      .map((v) => Document.fromJson(v))
+                      .toList()
+                      .where((document) {
+                    return document.name
+                        .toLowerCase()
+                        .contains(searchText.toLowerCase());
+                  });
+
+                  return Expanded(
+                    child: ListView(
+                      children: documents
+                          .map(
+                            (document) => StreamBuilder(
+                              stream: supabase
+                                  .from("DocumentToDocumentType")
+                                  .stream(
+                                primaryKey: ["document", "document_type"],
+                              ).eq('document', document.id),
+                              builder: (context, snapshot) {
+                                final documentTypes = (snapshot.data ?? [])
+                                    .map((row) => row['document_type'])
+                                    .toList()
+                                    .map(
+                                      (v) => allDocumentTypes
+                                          .firstWhere((dt) => dt.id == v),
+                                    )
+                                    .toList();
+
+                                return Slidable(
+                                  startActionPane: ActionPane(
+                                    motion: const StretchMotion(),
+                                    children: [
+                                      SlidableAction(
+                                        onPressed: (context) {
+                                          showEditDialog(
+                                            context,
+                                            document,
+                                            allDocumentTypes,
+                                            documentTypes,
+                                          );
+                                        },
+                                        label: 'Modifier',
+                                        backgroundColor: Colors.blue,
+                                        icon: Icons.edit,
+                                      ),
+                                    ],
+                                  ),
+                                  endActionPane: ActionPane(
+                                    motion: const StretchMotion(),
+                                    children: [
+                                      SlidableAction(
+                                        onPressed: (context) async {
+                                          await supabase
+                                              .from('DocumentToDocumentType')
+                                              .delete()
+                                              .eq('document', document.id);
+
+                                          await supabase
+                                              .from('Document')
+                                              .delete()
+                                              .eq('id', document.id);
+
+                                          await supabase.storage
+                                              .from('default')
+                                              .remove([document.path]);
+                                        },
+                                        label: 'Supprimer',
+                                        backgroundColor: Colors.red,
+                                        icon: Icons.delete,
+                                      ),
+                                    ],
+                                  ),
+                                  child: ListTile(
+                                    title: Text(
+                                      document.name,
+                                      style: TextStyle(color: secondaryColor),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: SizedBox(
+                                      height: 20,
+                                      child: documentTypes.isNotEmpty
+                                          ? ListView(
+                                              children: documentTypes
+                                                  .map(
+                                                    (dt) => Text(
+                                                      dt.name,
+                                                      style: TextStyle(
+                                                        color: secondaryColor,
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                            )
+                                          : const Text(
+                                              "Aucun type",
+                                              style:
+                                                  TextStyle(color: Colors.red),
+                                            ),
+                                    ),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.download),
+                                      onPressed: () async {
+                                        await FileSaver.instance.saveFile(
+                                          name: document.name,
+                                          bytes: await supabase.storage
+                                              .from('default')
+                                              .download(document.path),
+                                        );
+                                      },
+                                      color: secondaryColor,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  );
+                },
+              ),
+              ElevatedButton(
+                onPressed: logout,
+                child: const Text("Se déconnecter"),
+              ),
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      ),
     );
   }
 }
