@@ -4,13 +4,21 @@ import 'package:efrei_ged/model/documentType.dart';
 import 'package:efrei_ged/supabase.dart';
 import 'package:file_picker/_internal/file_picker_web.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:multi_dropdown/multiselect_dropdown.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  String searchText = "";
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +45,7 @@ class HomePage extends StatelessWidget {
               style: TextStyle(color: secondaryColor),
             ),
             content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
@@ -54,14 +63,53 @@ class HomePage extends StatelessWidget {
                   options: allDocumentTypes
                       .map((e) => ValueItem(label: e.name, value: e))
                       .toList(),
-                  singleSelectItemStyle: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
                   chipConfig: const ChipConfig(
-                      wrapType: WrapType.wrap, backgroundColor: Colors.red),
+                    wrapType: WrapType.wrap,
+                    backgroundColor: Colors.transparent,
+                  ),
                   optionTextStyle: const TextStyle(fontSize: 16),
-                  selectedOptionBackgroundColor: Colors.grey.shade300,
-                  selectedOptionTextColor: Colors.blue,
                   dropdownMargin: 2,
+                  fieldBackgroundColor: Colors.transparent,
+                  dropdownBackgroundColor: Colors.transparent,
+                  optionsBackgroundColor: Colors.transparent,
+                  searchBackgroundColor: Colors.transparent,
+                  optionBuilder: (ctx, item, selected) => selected
+                      ? Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            item.label,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        )
+                      : Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            item.label,
+                            style: const TextStyle(color: Colors.black),
+                          ),
+                        ),
+                  dropdownBorderRadius: 8,
+                  borderColor: secondaryColor,
+                  borderWidth: 1.25,
+                  borderRadius: 8,
+                  clearIcon: Icon(
+                    Icons.clear,
+                    color: secondaryColor,
+                  ),
+                  suffixIcon: Icon(
+                    Icons.arrow_drop_down,
+                    color: secondaryColor,
+                  ),
                 ),
               ],
             ),
@@ -132,6 +180,7 @@ class HomePage extends StatelessWidget {
               style: TextStyle(color: secondaryColor),
             ),
             content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   decoration: const InputDecoration(
@@ -153,9 +202,10 @@ class HomePage extends StatelessWidget {
                   chipConfig: const ChipConfig(
                       wrapType: WrapType.wrap, backgroundColor: Colors.red),
                   optionTextStyle: const TextStyle(fontSize: 16),
-                  selectedOptionBackgroundColor: Colors.grey.shade300,
-                  selectedOptionTextColor: Colors.blue,
                   dropdownMargin: 2,
+                  fieldBackgroundColor: Colors.transparent,
+                  searchBackgroundColor: Colors.transparent,
+                  dropdownBackgroundColor: Colors.transparent,
                 ),
               ],
             ),
@@ -248,12 +298,22 @@ class HomePage extends StatelessWidget {
                         onPressed: () {
                           showCreateDialog(context, allDocumentTypes);
                         },
-                        child: const Text("Créer"),
+                        child: const Text("Ajouter"),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SearchBar(
+                    hintText: "Rechercher",
+                    onChanged: (value) {
+                      setState(() {
+                        searchText = value;
+                      });
+                    },
+                  ),
+                ),
                 StreamBuilder(
                   stream: supabase.from('Document').stream(primaryKey: ['id']),
                   builder: (context, snapshot) {
@@ -263,10 +323,14 @@ class HomePage extends StatelessWidget {
                       );
                     }
 
-                    final documents = snapshot.data
-                            ?.map((v) => Document.fromJson(v))
-                            .toList() ??
-                        [];
+                    final documents = (snapshot.data ?? [])
+                        .map((v) => Document.fromJson(v))
+                        .toList()
+                        .where((document) {
+                      return document.name
+                          .toLowerCase()
+                          .contains(searchText.toLowerCase());
+                    });
 
                     return Expanded(
                       child: ListView(
@@ -279,11 +343,9 @@ class HomePage extends StatelessWidget {
                                   primaryKey: ["document", "document_type"],
                                 ).eq('document', document.id),
                                 builder: (context, snapshot) {
-                                  final documentTypes = (snapshot.data
-                                              ?.map(
-                                                  (row) => row['document_type'])
-                                              .toList() ??
-                                          [])
+                                  final documentTypes = (snapshot.data ?? [])
+                                      .map((row) => row['document_type'])
+                                      .toList()
                                       .map(
                                         (v) => allDocumentTypes
                                             .firstWhere((dt) => dt.id == v),
@@ -354,6 +416,18 @@ class HomePage extends StatelessWidget {
                                               )
                                               .toList(),
                                         ),
+                                      ),
+                                      trailing: IconButton(
+                                        icon: const Icon(Icons.download),
+                                        onPressed: () async {
+                                          await FileSaver.instance.saveFile(
+                                            name: document.name,
+                                            bytes: await supabase.storage
+                                                .from('default')
+                                                .download(document.path),
+                                          );
+                                        },
+                                        color: secondaryColor,
                                       ),
                                     ),
                                   );
